@@ -10,40 +10,90 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc;
+        }
+        
+        /* Modern UI Background */
+        .bg-mesh {
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.4) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.3) 0, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel { 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+
+        .glass-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Text Gradients */
+        .text-gradient {
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Animations */
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
         .pulse-dot { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .loader { border-top-color: #3b82f6; animation: spinner 1.5s linear infinite; }
-        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+        
+        /* Custom Scrollbar for hidden overflow */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body>
+<body class="bg-mesh">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // Custom Icon Component using Lucide
         const Icon = ({ name, size = 24, className = "" }) => {
             useEffect(() => { lucide.createIcons(); }, [name]);
             return <i data-lucide={name} width={size} height={size} className={className}></i>;
         };
 
         const App = () => {
-            const [view, setView] = useState('login');
+            // View States: 'splash', 'login', 'otp', 'dashboard', 'report'
+            const [view, setView] = useState('splash');
             const [phone, setPhone] = useState('');
             const [viewMode, setViewMode] = useState('list');
             const [isAnalyzing, setIsAnalyzing] = useState(false);
             const [aiResult, setAiResult] = useState(null);
             
-            const fileInputRef = useRef(null); // Reference for the hidden file input
+            const fileInputRef = useRef(null);
 
-            // Mock Data
+            // App Initialization (Splash Screen)
+            useEffect(() => {
+                if (view === 'splash') {
+                    const timer = setTimeout(() => setView('login'), 2200);
+                    return () => clearTimeout(timer);
+                }
+            }, [view]);
+
+            // Mock Data tailored to Bengaluru
             const [reports, setReports] = useState([
                 { id: 'SYNC-849', type: 'Severe Pothole', location: 'Kengeri Main Road', status: 'In Progress', severity: 'High', dept: 'Road Infra', time: '2 hrs ago' },
-                { id: 'SYNC-842', type: 'Streetlight Outage', location: 'Near Sapthagiri University', status: 'Resolved', severity: 'Low', dept: 'Electrical', time: '1 day ago' }
+                { id: 'SYNC-842', type: 'Streetlight Outage', location: 'Mysore Road', status: 'Resolved', severity: 'Low', dept: 'Electrical', time: '1 day ago' }
             ]);
 
             // Handlers
@@ -61,14 +111,13 @@
                 setIsAnalyzing(true);
                 setAiResult(null);
                 
-                // Simulate network request to Gemini API
                 setTimeout(() => {
                     setIsAnalyzing(false);
                     setAiResult({
                         type: 'Burst Water Pipe',
                         confidence: '98.4%',
                         severity: 'Critical',
-                        dept: 'BWSSB / Water Supply',
+                        dept: 'BWSSB',
                         action: 'Emergency Dispatch Required'
                     });
                 }, 2500);
@@ -90,49 +139,59 @@
             };
 
             return (
-                <div className="min-h-screen flex justify-center bg-slate-100">
-                    <div className="w-full max-w-md bg-slate-50 min-h-screen relative shadow-2xl overflow-hidden">
+                <div className="min-h-screen flex justify-center text-slate-100">
+                    <div className="w-full max-w-md relative overflow-hidden flex flex-col min-h-screen border-x border-slate-800 shadow-2xl">
                         
-                        {/* Header */}
-                        {view !== 'login' && view !== 'otp' && (
-                            <header className="bg-white px-5 py-4 flex justify-between items-center sticky top-0 z-10 border-b border-slate-200 shadow-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className="bg-blue-600 p-1.5 rounded-lg">
+                        {/* --- SPLASH SCREEN --- */}
+                        {view === 'splash' && (
+                            <div className="flex-1 flex flex-col items-center justify-center animate-fade-in bg-[#0f172a] z-50 absolute inset-0">
+                                <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-3xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/30 transform scale-100 animate-[pulse_2s_ease-in-out_infinite]">
+                                    <Icon name="satellite" className="text-white" size={48} />
+                                </div>
+                                <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-white">CivicSync</h1>
+                                <p className="text-blue-400 font-medium tracking-widest uppercase text-xs">Bengaluru City Platform</p>
+                            </div>
+                        )}
+
+                        {/* --- HEADER (Hidden on Login/Splash) --- */}
+                        {view !== 'splash' && view !== 'login' && view !== 'otp' && (
+                            <header className="glass-panel px-5 py-4 flex justify-between items-center sticky top-0 z-30">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2 rounded-xl shadow-md">
                                         <Icon name="satellite" className="text-white" size={18} />
                                     </div>
                                     <div>
-                                        <h1 className="text-lg font-bold text-slate-900 leading-tight">CivicSync</h1>
-                                        <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">
+                                        <h1 className="text-lg font-bold text-white leading-tight">CivicSync</h1>
+                                        <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold uppercase tracking-wider">
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span> Live Sync Active
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={() => setView('login')} className="text-slate-400 hover:text-slate-600">
-                                    <Icon name="log-out" size={20} />
+                                <button onClick={() => setView('login')} className="bg-slate-800 p-2 rounded-full text-slate-400 hover:text-white transition-colors border border-slate-700">
+                                    <Icon name="log-out" size={18} />
                                 </button>
                             </header>
                         )}
 
-                        <main className="p-5 pb-24">
+                        <main className="p-6 pb-28 flex-1 flex flex-col">
                             {/* --- LOGIN VIEW --- */}
                             {view === 'login' && (
-                                <div className="mt-20 px-4">
-                                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-200">
-                                        <Icon name="leaf" className="text-white" size={32} />
+                                <div className="flex-1 flex flex-col justify-center animate-slide-up pb-10">
+                                    <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-blue-500/20">
+                                        <Icon name="zap" className="text-white" size={32} />
                                     </div>
-                                    <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Smart Civic<br/>Maintenance.</h2>
-                                    <p className="text-slate-500 mb-8 leading-relaxed">Report infrastructure issues instantly. Powered by Gemini AI for rapid routing.</p>
+                                    <h2 className="text-4xl font-extrabold text-white mb-3 tracking-tight">Smart Civic<br/><span className="text-gradient">Maintenance.</span></h2>
+                                    <p className="text-slate-400 mb-10 text-lg leading-relaxed">Report infrastructure issues instantly. Powered by Gemini AI for rapid municipal routing.</p>
                                     
-                                    <form onSubmit={requestOTP} className="space-y-4">
+                                    <form onSubmit={requestOTP} className="space-y-5">
                                         <div>
-                                            <label className="text-sm font-semibold text-slate-700 block mb-1">Phone Number</label>
-                                            <div className="relative">
-                                                <span className="absolute left-4 top-3.5 text-slate-400 font-medium">+91</span>
-                                                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all font-medium" placeholder="Enter mobile number" required />
+                                            <div className="relative group">
+                                                <span className="absolute left-4 top-4 text-slate-400 font-medium">+91</span>
+                                                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-white placeholder-slate-500" placeholder="Enter mobile number" required />
                                             </div>
                                         </div>
-                                        <button className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-semibold hover:bg-slate-800 transition-colors flex justify-center items-center gap-2">
-                                            Send Secure OTP <Icon name="arrow-right" size={18} />
+                                        <button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:shadow-lg hover:shadow-blue-500/25 transition-all flex justify-center items-center gap-2">
+                                            Continue Securely <Icon name="arrow-right" size={20} />
                                         </button>
                                     </form>
                                 </div>
@@ -140,16 +199,15 @@
 
                             {/* --- OTP VIEW --- */}
                             {view === 'otp' && (
-                                <div className="mt-20 px-4">
-                                    <button onClick={() => setView('login')} className="text-slate-400 mb-6 flex items-center gap-1 hover:text-slate-900 transition-colors">
-                                        <Icon name="arrow-left" size={16} /> Back
+                                <div className="flex-1 flex flex-col justify-center animate-slide-up pb-10">
+                                    <button onClick={() => setView('login')} className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-8 border border-slate-700 hover:text-white transition-colors">
+                                        <Icon name="chevron-left" size={20} />
                                     </button>
-                                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Verify Number</h2>
-                                    <p className="text-slate-500 mb-8 text-sm">We've sent a 4-digit code to +91 {phone}</p>
+                                    <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Verify Number</h2>
+                                    <p className="text-slate-400 mb-10">We've sent a 4-digit security code to <span className="text-white font-medium">+91 {phone}</span></p>
                                     
-                                    <form onSubmit={verifyOTP} className="space-y-6">
-                                        {/* OTP Input Group with Auto-advance */}
-                                        <div className="flex gap-3 justify-between">
+                                    <form onSubmit={verifyOTP} className="space-y-8">
+                                        <div className="flex gap-4 justify-between">
                                             {[0, 1, 2, 3].map(index => (
                                                 <input 
                                                     key={index} 
@@ -157,22 +215,14 @@
                                                     type="text" 
                                                     inputMode="numeric"
                                                     maxLength="1" 
-                                                    className="w-14 h-14 text-center text-xl font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition-all" 
+                                                    className="w-16 h-16 text-center text-2xl font-bold bg-slate-800/50 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder-slate-600 shadow-inner" 
                                                     required 
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        // Ensure only numbers are entered
-                                                        if (val && !/^[0-9]$/.test(val)) {
-                                                            e.target.value = '';
-                                                            return;
-                                                        }
-                                                        // Auto-advance to next input
-                                                        if (val && index < 3) {
-                                                            document.getElementById(`otp-${index + 1}`).focus();
-                                                        }
+                                                        if (val && !/^[0-9]$/.test(val)) { e.target.value = ''; return; }
+                                                        if (val && index < 3) document.getElementById(`otp-${index + 1}`).focus();
                                                     }}
                                                     onKeyDown={(e) => {
-                                                        // Move back on backspace if current field is empty
                                                         if (e.key === 'Backspace' && !e.target.value && index > 0) {
                                                             document.getElementById(`otp-${index - 1}`).focus();
                                                         }
@@ -180,8 +230,8 @@
                                                 />
                                             ))}
                                         </div>
-                                        <button className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">
-                                            Verify & Login
+                                        <button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-500/25 transition-all">
+                                            Verify & Authenticate
                                         </button>
                                     </form>
                                 </div>
@@ -190,39 +240,44 @@
                             {/* --- DASHBOARD VIEW --- */}
                             {view === 'dashboard' && (
                                 <div className="space-y-6 animate-fade-in">
-                                    <div className="flex bg-slate-200 p-1 rounded-lg">
-                                        <button onClick={() => setViewMode('list')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>List View</button>
-                                        <button onClick={() => setViewMode('map')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Live Map</button>
+                                    {/* View Toggle */}
+                                    <div className="flex bg-slate-800/80 p-1.5 rounded-xl border border-slate-700">
+                                        <button onClick={() => setViewMode('list')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400'}`}>Active Reports</button>
+                                        <button onClick={() => setViewMode('map')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'map' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400'}`}>Live Map</button>
                                     </div>
 
                                     {viewMode === 'map' ? (
-                                        <div className="w-full h-96 bg-slate-200 rounded-2xl border-2 border-slate-300 overflow-hidden relative flex items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-                                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600">
-                                                <Icon name="map-pin" size={40} className="drop-shadow-lg" />
+                                        <div className="w-full h-96 bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden relative flex items-center justify-center">
+                                            {/* Simulated Map Background */}
+                                            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-500 animate-bounce">
+                                                <Icon name="map-pin" size={48} className="drop-shadow-lg" />
                                             </div>
-                                            <span className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-sm font-semibold text-slate-700 shadow-md absolute bottom-4">Map Integration Placeholder</span>
+                                            <div className="absolute bottom-6 glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-white shadow-xl flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span> Radar Active
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
                                             {reports.map(r => (
-                                                <div key={r.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <span className={`text-[11px] font-bold uppercase px-2.5 py-1 rounded-md tracking-wide ${r.severity === 'Critical' ? 'bg-red-100 text-red-700' : r.severity === 'High' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                <div key={r.id} className="glass-card p-5 rounded-3xl">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <span className={`text-[10px] font-bold uppercase px-3 py-1.5 rounded-lg tracking-wider ${r.severity === 'Critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : r.severity === 'High' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
                                                             {r.severity}
                                                         </span>
-                                                        <span className="text-slate-400 text-xs font-medium">{r.time}</span>
+                                                        <span className="text-slate-400 text-xs font-medium flex items-center gap-1"><Icon name="clock" size={12}/> {r.time}</span>
                                                     </div>
-                                                    <h3 className="font-bold text-slate-900 text-lg">{r.type}</h3>
-                                                    <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-1 mb-4">
-                                                        <Icon name="map-pin" size={14} /> {r.location}
+                                                    <h3 className="font-bold text-white text-xl mb-1">{r.type}</h3>
+                                                    <div className="flex items-center gap-2 text-slate-400 text-sm mb-5">
+                                                        <Icon name="map-pin" size={16} className="text-blue-400" /> {r.location}
                                                     </div>
                                                     
-                                                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                                    <div className="flex items-center justify-between pt-4 border-t border-slate-700/50">
                                                         <div className="flex items-center gap-2">
-                                                            <span className={`w-2 h-2 rounded-full ${r.status === 'Resolved' ? 'bg-emerald-500' : r.status === 'Dispatched' ? 'bg-blue-500' : 'bg-amber-500'}`}></span>
-                                                            <span className="text-sm font-semibold text-slate-700">{r.status}</span>
+                                                            <span className={`w-2 h-2 rounded-full shadow-lg ${r.status === 'Resolved' ? 'bg-emerald-400 shadow-emerald-500/50' : r.status === 'Dispatched' ? 'bg-blue-400 shadow-blue-500/50' : 'bg-amber-400 shadow-amber-500/50'}`}></span>
+                                                            <span className="text-sm font-semibold text-slate-300">{r.status}</span>
                                                         </div>
-                                                        <span className="text-xs text-slate-400 font-mono">{r.id}</span>
+                                                        <span className="text-xs text-slate-500 font-mono bg-slate-800 px-2 py-1 rounded">{r.id}</span>
                                                     </div>
                                                 </div>
                                             ))}
@@ -233,15 +288,16 @@
 
                             {/* --- REPORT ISSUE VIEW --- */}
                             {view === 'report' && (
-                                <div className="space-y-6">
+                                <div className="space-y-6 animate-slide-up">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-xl font-bold text-slate-900">New Report</h2>
-                                        <button onClick={() => {setView('dashboard'); setAiResult(null);}} className="text-slate-400 hover:text-slate-700"><Icon name="x" size={24} /></button>
+                                        <h2 className="text-2xl font-bold text-white tracking-tight">AI Assessment</h2>
+                                        <button onClick={() => {setView('dashboard'); setAiResult(null);}} className="bg-slate-800 p-2 rounded-full text-slate-400 hover:text-white transition-colors border border-slate-700">
+                                            <Icon name="x" size={20} />
+                                        </button>
                                     </div>
 
                                     {!aiResult ? (
                                         <div>
-                                            {/* Hidden file input that gets triggered by clicking the box below */}
                                             <input 
                                                 type="file" 
                                                 accept="image/*" 
@@ -249,7 +305,6 @@
                                                 ref={fileInputRef} 
                                                 className="hidden" 
                                                 onChange={(e) => {
-                                                    // Trigger analysis only if a file was actually selected
                                                     if(e.target.files && e.target.files.length > 0) {
                                                         simulateAIAnalysis();
                                                     }
@@ -257,7 +312,7 @@
                                             />
                                             
                                             <div 
-                                                className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all ${isAnalyzing ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50 cursor-pointer'}`} 
+                                                className={`glass-panel border-2 border-dashed rounded-3xl p-8 text-center transition-all ${isAnalyzing ? 'border-blue-500 bg-blue-900/20' : 'border-slate-600 hover:border-slate-400 hover:bg-slate-800/50 cursor-pointer'}`} 
                                                 onClick={() => {
                                                     if (!isAnalyzing && fileInputRef.current) {
                                                         fileInputRef.current.click();
@@ -265,47 +320,53 @@
                                                 }}
                                             >
                                                 {isAnalyzing ? (
-                                                    <div className="flex flex-col items-center py-6">
-                                                        <div className="w-12 h-12 border-4 loader rounded-full border-slate-200 mb-4"></div>
-                                                        <h3 className="font-bold text-blue-600 mb-1">Gemini AI is analyzing...</h3>
-                                                        <p className="text-xs text-blue-400">Extracting context from image and metadata</p>
+                                                    <div className="flex flex-col items-center py-8">
+                                                        <Icon name="sparkles" size={40} className="text-blue-400 mb-4 animate-pulse" />
+                                                        <h3 className="font-bold text-white text-lg mb-2">Gemini AI Processing...</h3>
+                                                        <p className="text-sm text-blue-300">Extracting visual data & severity metrics</p>
                                                     </div>
                                                 ) : (
-                                                    <div className="py-8">
-                                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                            <Icon name="camera" className="text-slate-500" size={28} />
+                                                    <div className="py-10">
+                                                        <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-700">
+                                                            <Icon name="camera" className="text-blue-400" size={36} />
                                                         </div>
-                                                        <h3 className="font-bold text-slate-700 mb-1">Upload Photo</h3>
-                                                        <p className="text-sm text-slate-500">Tap to capture the civic issue</p>
+                                                        <h3 className="font-bold text-white text-xl mb-2">Upload Infrastructure Issue</h3>
+                                                        <p className="text-sm text-slate-400">Tap to capture the scene. AI will route it.</p>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm animate-fade-in">
-                                            <div className="bg-slate-900 p-4 flex items-center gap-3 text-white">
-                                                <Icon name="sparkles" size={20} className="text-blue-400" />
-                                                <h3 className="font-semibold">AI Triage Complete</h3>
+                                        <div className="glass-card rounded-3xl overflow-hidden animate-fade-in">
+                                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 flex items-center gap-3 text-white border-b border-white/10">
+                                                <Icon name="cpu" size={24} className="text-blue-200" />
+                                                <div>
+                                                    <h3 className="font-bold text-lg">Triage Complete</h3>
+                                                    <p className="text-blue-200 text-xs font-mono">Gemini Vision Model v1.5</p>
+                                                </div>
                                             </div>
-                                            <div className="p-5 space-y-4">
-                                                <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-6 space-y-6">
+                                                <div className="grid grid-cols-2 gap-5">
                                                     <div>
-                                                        <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Detected Issue</p>
-                                                        <p className="font-bold text-slate-900">{aiResult.type}</p>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Detected Issue</p>
+                                                        <p className="font-bold text-white text-lg">{aiResult.type}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Severity</p>
-                                                        <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded">{aiResult.severity}</span>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Severity / Confidence</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold px-2 py-1 rounded uppercase">{aiResult.severity}</span>
+                                                            <span className="text-slate-300 text-sm font-mono">{aiResult.confidence}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="col-span-2">
-                                                        <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Routing Department</p>
-                                                        <p className="font-medium text-slate-700 flex items-center gap-2">
-                                                            <Icon name="truck" size={16} className="text-slate-400"/> {aiResult.dept}
+                                                    <div className="col-span-2 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Routing Department</p>
+                                                        <p className="font-bold text-white flex items-center gap-3">
+                                                            <span className="p-2 bg-slate-700 rounded-lg text-blue-400"><Icon name="truck" size={18}/></span> {aiResult.dept}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <button onClick={submitReport} className="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-semibold shadow-md hover:bg-blue-700">
-                                                    Confirm & Dispatch
+                                                <button onClick={submitReport} className="w-full bg-white text-slate-900 py-4 rounded-2xl font-extrabold shadow-lg hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
+                                                    Confirm & Dispatch <Icon name="send" size={18} />
                                                 </button>
                                             </div>
                                         </div>
@@ -316,9 +377,9 @@
 
                         {/* Floating Action Button for Dashboard */}
                         {view === 'dashboard' && (
-                            <div className="fixed bottom-6 left-0 right-0 max-w-md mx-auto px-5 z-20 flex justify-end">
-                                <button onClick={() => setView('report')} className="bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-300 flex items-center justify-center transform hover:scale-105 transition-all">
-                                    <Icon name="plus" size={28} />
+                            <div className="absolute bottom-8 left-0 right-0 px-6 z-20 flex justify-end">
+                                <button onClick={() => setView('report')} className="bg-gradient-to-tr from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white w-16 h-16 rounded-full shadow-lg shadow-blue-500/40 flex items-center justify-center transform hover:scale-105 transition-all border border-blue-400/30">
+                                    <Icon name="plus" size={32} />
                                 </button>
                             </div>
                         )}
