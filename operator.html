@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicSync | Command Center</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f8fafc; overflow: hidden; }
+        
+        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Leaflet Dark Theme Adjustments */
+        .leaflet-container { background: #020617; font-family: 'Plus Jakarta Sans', sans-serif; z-index: 10; }
+        .leaflet-popup-content-wrapper { background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; }
+        .leaflet-popup-tip { background: #1e293b; }
+        
+        .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
+    <div id="root" class="h-full w-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            useEffect(() => { lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+
+        const App = () => {
+            const mapRef = useRef(null);
+            const mapInstanceRef = useRef(null);
+            const markersRef = useRef({});
+
+            // Mock Data representing the database
+            const [tickets, setTickets] = useState([
+                { id: 'SYNC-902', type: 'Burst Water Pipe', dept: 'Water Supply', severity: 'Critical', status: 'Pending Review', location: 'MG Road', aiConfidence: '98%', time: '2 min ago', coords: [12.9716, 77.5946] },
+                { id: 'SYNC-849', type: 'Severe Pothole', dept: 'Road Infra', severity: 'High', status: 'Dispatched', location: 'Kengeri Main Road', aiConfidence: '91%', time: '2 hrs ago', coords: [12.9175, 77.4836] },
+                { id: 'SYNC-842', type: 'Streetlight Outage', dept: 'Electrical', severity: 'Low', status: 'In Progress', location: 'Mysore Road', aiConfidence: '88%', time: '4 hrs ago', coords: [12.9350, 77.5000] }
+            ]);
+
+            const [selectedTicket, setSelectedTicket] = useState(tickets[0]);
+            const [filter, setFilter] = useState('All');
+
+            // Initialize Map
+            useEffect(() => {
+                if (mapRef.current && !mapInstanceRef.current) {
+                    const map = L.map(mapRef.current, { zoomControl: false }).setView([12.94, 77.54], 12);
+                    L.control.zoom({ position: 'bottomright' }).addTo(map);
+                    
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; CARTO'
+                    }).addTo(map);
+                    
+                    mapInstanceRef.current = map;
+                }
+            }, []);
+
+            // Update Map Markers when tickets or filters change
+            useEffect(() => {
+                if (!mapInstanceRef.current) return;
+                const map = mapInstanceRef.current;
+
+                // Clear existing markers
+                Object.values(markersRef.current).forEach(marker => map.removeLayer(marker));
+                markersRef.current = {};
+
+                const filteredTickets = filter === 'All' ? tickets : tickets.filter(t => t.status === filter);
+
+                filteredTickets.forEach(ticket => {
+                    const color = ticket.severity === 'Critical' ? '#ef4444' : ticket.severity === 'High' ? '#f97316' : '#3b82f6';
+                    const marker = L.circleMarker(ticket.coords, {
+                        radius: selectedTicket?.id === ticket.id ? 14 : 8,
+                        fillColor: color,
+                        color: selectedTicket?.id === ticket.id ? '#ffffff' : '#0f172a',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.9
+                    }).addTo(map);
+
+                    marker.on('click', () => setSelectedTicket(ticket));
+                    markersRef.current[ticket.id] = marker;
+                });
+
+                // Pan to selected ticket
+                if (selectedTicket && markersRef.current[selectedTicket.id]) {
+                    map.flyTo(selectedTicket.coords, 14, { duration: 0.5 });
+                }
+
+            }, [tickets, filter, selectedTicket]);
+
+            // Status Update Handler (Simulates emitting a WebSocket event)
+            const updateStatus = (id, newStatus) => {
+                setTickets(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+                if (selectedTicket.id === id) {
+                    setSelectedTicket(prev => ({ ...prev, status: newStatus }));
+                }
+                // In reality: socket.emit('status_update', { id, status: newStatus });
+            };
+
+            const getStatusColor = (status) => {
+                switch(status) {
+                    case 'Pending Review': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+                    case 'Dispatched': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                    case 'In Progress': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+                    case 'Resolved': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                    default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-full">
+                    {/* Top Navigation */}
+                    <header className="h-16 glass-panel border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <Icon name="satellite" className="text-white" size={18} />
+                            </div>
+                            <h1 className="text-xl font-bold tracking-tight">CivicSync <span className="font-light text-slate-400">Dispatcher</span></h1>
+                        </div>
+                        
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2 text-sm font-medium text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20">
+                                <span className="w-2 h-2 bg-emerald-400 rounded-full pulse"></span> WebSocket Connected
+                            </div>
+                            <div className="flex items-center gap-3 border-l border-slate-700 pl-6">
+                                <div className="text-right">
+                                    <div className="text-sm font-bold">Operator 04</div>
+                                    <div className="text-xs text-slate-400">Zonal Command B</div>
+                                </div>
+                                <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
+                                    <Icon name="user" className="text-slate-400" />
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Layout */}
+                    <div className="flex flex-1 overflow-hidden relative">
+                        
+                        {/* Left Sidebar - Ticket List */}
+                        <aside className="w-96 glass-panel border-r border-slate-800 flex flex-col z-20">
+                            <div className="p-4 border-b border-slate-800">
+                                <h2 className="font-bold text-lg mb-4">Active Reports</h2>
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                    {['All', 'Pending Review', 'Dispatched', 'In Progress'].map(f => (
+                                        <button 
+                                            key={f}
+                                            onClick={() => setFilter(f)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${filter === f ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                        >
+                                            {f}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                                {tickets.filter(t => filter === 'All' || t.status === filter).map(ticket => (
+                                    <div 
+                                        key={ticket.id} 
+                                        onClick={() => setSelectedTicket(ticket)}
+                                        className={`p-4 rounded-xl cursor-pointer transition-all border ${selectedTicket?.id === ticket.id ? 'bg-slate-800 border-blue-500 shadow-lg' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600'}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${getStatusColor(ticket.status)}`}>
+                                                {ticket.status}
+                                            </span>
+                                            <span className="text-xs text-slate-500">{ticket.time}</span>
+                                        </div>
+                                        <h3 className="font-bold text-sm mb-1">{ticket.type}</h3>
+                                        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                            <Icon name="map-pin" size={12} /> {ticket.location}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </aside>
+
+                        {/* Center - Map Area */}
+                        <main className="flex-1 relative z-10">
+                            <div ref={mapRef} className="absolute inset-0"></div>
+                            
+                            {/* AI Triage Overlay (Right Side) */}
+                            {selectedTicket && (
+                                <div className="absolute top-6 right-6 w-[400px] glass-panel rounded-2xl shadow-2xl border border-slate-700 overflow-hidden flex flex-col max-h-[calc(100%-3rem)] z-30">
+                                    <div className="bg-gradient-to-r from-blue-900/50 to-indigo-900/50 p-4 border-b border-slate-700 flex justify-between items-center">
+                                        <div className="flex items-center gap-2 text-blue-300">
+                                            <Icon name="cpu" size={18} />
+                                            <span className="text-xs font-mono font-bold">GEMINI TRIAGE REPORT</span>
+                                        </div>
+                                        <span className="font-mono text-xs text-slate-400">{selectedTicket.id}</span>
+                                    </div>
+                                    
+                                    <div className="p-6 overflow-y-auto">
+                                        <h2 className="text-2xl font-bold mb-2">{selectedTicket.type}</h2>
+                                        <div className="flex items-center gap-2 text-slate-400 text-sm mb-6 pb-6 border-b border-slate-800">
+                                            <Icon name="map-pin" size={16} /> {selectedTicket.location}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                                                <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">AI Confidence</div>
+                                                <div className="text-lg font-mono text-emerald-400">{selectedTicket.aiConfidence}</div>
+                                            </div>
+                                            <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                                                <div className="text-[10px] text-slate-500 font-bold uppercase mb-1">Target Dept</div>
+                                                <div className="text-sm font-bold text-white">{selectedTicket.dept}</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Status Update Controls */}
+                                        <div className="space-y-3">
+                                            <div className="text-xs font-bold text-slate-500 uppercase mb-2">Update Public Status (Syncs to App)</div>
+                                            
+                                            {selectedTicket.status === 'Pending Review' && (
+                                                <button onClick={() => updateStatus(selectedTicket.id, 'Dispatched')} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+                                                    <Icon name="send" size={18} /> Approve & Dispatch
+                                                </button>
+                                            )}
+                                            
+                                            {selectedTicket.status === 'Dispatched' && (
+                                                <button onClick={() => updateStatus(selectedTicket.id, 'In Progress')} className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+                                                    <Icon name="hard-hat" size={18} /> Mark "In Progress"
+                                                </button>
+                                            )}
+                                            
+                                            {selectedTicket.status === 'In Progress' && (
+                                                <button onClick={() => updateStatus(selectedTicket.id, 'Resolved')} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+                                                    <Icon name="check-circle" size={18} /> Mark "Resolved"
+                                                </button>
+                                            )}
+
+                                            {selectedTicket.status === 'Resolved' && (
+                                                <div className="w-full bg-slate-800 text-emerald-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 border border-emerald-500/30">
+                                                    <Icon name="shield-check" size={18} /> Issue Closed
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
