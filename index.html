@@ -9,15 +9,17 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #0f172a; /* Slate 900 */
+            background-color: #0f172a;
             color: #f8fafc;
         }
         
-        /* Modern UI Background */
         .bg-mesh {
             background-color: #0f172a;
             background-image: 
@@ -27,7 +29,6 @@
             background-attachment: fixed;
         }
 
-        /* Glassmorphism Panels */
         .glass-panel { 
             background: rgba(30, 41, 59, 0.7); 
             backdrop-filter: blur(16px); 
@@ -41,14 +42,12 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
 
-        /* Text Gradients */
         .text-gradient {
             background: linear-gradient(to right, #60a5fa, #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* Animations */
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
         .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -57,8 +56,11 @@
         .pulse-dot { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
         
-        /* Custom Scrollbar for hidden overflow */
         ::-webkit-scrollbar { display: none; }
+        
+        .leaflet-container { background: #0f172a; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .leaflet-popup-content-wrapper { background: #1e293b; color: #f8fafc; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+        .leaflet-popup-tip { background: #1e293b; }
     </style>
 </head>
 <body class="bg-mesh">
@@ -73,16 +75,17 @@
         };
 
         const App = () => {
-            // View States: 'splash', 'login', 'otp', 'dashboard', 'report'
             const [view, setView] = useState('splash');
             const [phone, setPhone] = useState('');
+            const [phoneError, setPhoneError] = useState(''); // New state for phone validation
             const [viewMode, setViewMode] = useState('list');
             const [isAnalyzing, setIsAnalyzing] = useState(false);
             const [aiResult, setAiResult] = useState(null);
             
             const fileInputRef = useRef(null);
+            const mapRef = useRef(null);
+            const mapInstanceRef = useRef(null);
 
-            // App Initialization (Splash Screen)
             useEffect(() => {
                 if (view === 'splash') {
                     const timer = setTimeout(() => setView('login'), 2200);
@@ -90,16 +93,83 @@
                 }
             }, [view]);
 
-            // Mock Data tailored to Bengaluru
             const [reports, setReports] = useState([
-                { id: 'SYNC-849', type: 'Severe Pothole', location: 'Kengeri Main Road', status: 'In Progress', severity: 'High', dept: 'Road Infra', time: '2 hrs ago' },
-                { id: 'SYNC-842', type: 'Streetlight Outage', location: 'Mysore Road', status: 'Resolved', severity: 'Low', dept: 'Electrical', time: '1 day ago' }
+                { id: 'SYNC-849', type: 'Severe Pothole', location: 'Kengeri Main Road', status: 'In Progress', severity: 'High', dept: 'Road Infra', time: '2 hrs ago', coords: [12.9175, 77.4836] },
+                { id: 'SYNC-842', type: 'Streetlight Outage', location: 'Mysore Road', status: 'Resolved', severity: 'Low', dept: 'Electrical', time: '1 day ago', coords: [12.9350, 77.5000] }
             ]);
 
-            // Handlers
+            useEffect(() => {
+                if (view === 'dashboard' && viewMode === 'map' && mapRef.current) {
+                    if (!mapInstanceRef.current) {
+                        const map = L.map(mapRef.current).setView([12.9716, 77.5946], 12);
+                        
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                            attribution: '&copy; OpenStreetMap &copy; CARTO'
+                        }).addTo(map);
+
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                                (position) => {
+                                    const { latitude, longitude } = position.coords;
+                                    map.setView([latitude, longitude], 14);
+                                    
+                                    const userMarker = L.circleMarker([latitude, longitude], {
+                                        radius: 8, fillColor: "#3b82f6", color: "#ffffff", weight: 2, opacity: 1, fillOpacity: 0.8
+                                    }).addTo(map);
+                                    userMarker.bindPopup("<b>You are here</b>").openPopup();
+                                },
+                                (err) => console.log("Geolocation denied or failed.", err),
+                                { enableHighAccuracy: true }
+                            );
+                        }
+
+                        reports.forEach(report => {
+                            if (report.coords) {
+                                const markerColor = report.severity === 'Critical' ? '#ef4444' : report.severity === 'High' ? '#f97316' : '#10b981';
+                                
+                                const circleMarker = L.circleMarker(report.coords, {
+                                    radius: 10, fillColor: markerColor, color: "#1e293b", weight: 2, opacity: 1, fillOpacity: 0.9
+                                }).addTo(map);
+                                
+                                circleMarker.bindPopup(`
+                                    <div class="font-sans">
+                                        <div class="text-xs font-bold uppercase mb-1" style="color: ${markerColor}">${report.severity} Priority</div>
+                                        <div class="font-bold text-sm mb-1">${report.type}</div>
+                                        <div class="text-xs text-slate-400">${report.id} • ${report.status}</div>
+                                    </div>
+                                `);
+                            }
+                        });
+
+                        mapInstanceRef.current = map;
+                    }
+                }
+
+                return () => {
+                    if ((view !== 'dashboard' || viewMode !== 'map') && mapInstanceRef.current) {
+                        mapInstanceRef.current.remove();
+                        mapInstanceRef.current = null;
+                    }
+                };
+            }, [view, viewMode, reports]);
+
+            // Clean input strictly to numbers and clear error while typing
+            const handlePhoneChange = (e) => {
+                const numericValue = e.target.value.replace(/\D/g, ''); // Strip non-numeric chars
+                if (numericValue.length <= 10) {
+                    setPhone(numericValue);
+                    setPhoneError(''); // Clear error instantly when user types
+                }
+            };
+
             const requestOTP = (e) => {
                 e.preventDefault();
-                if(phone.length >= 10) setView('otp');
+                // Check if the number is exactly 10 digits
+                if (phone.length < 10) {
+                    setPhoneError(`You entered ${phone.length} digits. A valid number requires 10 digits.`);
+                    return;
+                }
+                setView('otp');
             };
 
             const verifyOTP = (e) => {
@@ -110,7 +180,6 @@
             const simulateAIAnalysis = () => {
                 setIsAnalyzing(true);
                 setAiResult(null);
-                
                 setTimeout(() => {
                     setIsAnalyzing(false);
                     setAiResult({
@@ -124,6 +193,8 @@
             };
 
             const submitReport = () => {
+                let newCoords = [12.9175 + (Math.random() * 0.02 - 0.01), 77.4836 + (Math.random() * 0.02 - 0.01)];
+                
                 const newReport = {
                     id: `SYNC-${Math.floor(Math.random() * 900) + 100}`,
                     type: aiResult.type,
@@ -131,10 +202,12 @@
                     status: 'Dispatched',
                     severity: aiResult.severity,
                     dept: aiResult.dept,
-                    time: 'Just now'
+                    time: 'Just now',
+                    coords: newCoords
                 };
                 setReports([newReport, ...reports]);
                 setView('dashboard');
+                setViewMode('map');
                 setAiResult(null);
             };
 
@@ -142,7 +215,6 @@
                 <div className="min-h-screen flex justify-center text-slate-100">
                     <div className="w-full max-w-md relative overflow-hidden flex flex-col min-h-screen border-x border-slate-800 shadow-2xl">
                         
-                        {/* --- SPLASH SCREEN --- */}
                         {view === 'splash' && (
                             <div className="flex-1 flex flex-col items-center justify-center animate-fade-in bg-[#0f172a] z-50 absolute inset-0">
                                 <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-3xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/30 transform scale-100 animate-[pulse_2s_ease-in-out_infinite]">
@@ -153,7 +225,6 @@
                             </div>
                         )}
 
-                        {/* --- HEADER (Hidden on Login/Splash) --- */}
                         {view !== 'splash' && view !== 'login' && view !== 'otp' && (
                             <header className="glass-panel px-5 py-4 flex justify-between items-center sticky top-0 z-30">
                                 <div className="flex items-center gap-3">
@@ -174,21 +245,35 @@
                         )}
 
                         <main className="p-6 pb-28 flex-1 flex flex-col">
-                            {/* --- LOGIN VIEW --- */}
                             {view === 'login' && (
                                 <div className="flex-1 flex flex-col justify-center animate-slide-up pb-10">
                                     <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-blue-500/20">
                                         <Icon name="zap" className="text-white" size={32} />
                                     </div>
                                     <h2 className="text-4xl font-extrabold text-white mb-3 tracking-tight">Smart Civic<br/><span className="text-gradient">Maintenance.</span></h2>
-                                    <p className="text-slate-400 mb-10 text-lg leading-relaxed">Report infrastructure issues instantly. Powered by Gemini AI for rapid municipal routing.</p>
+                                    <p className="text-slate-400 mb-10 text-lg leading-relaxed">Report infrastructure issues instantly. Powered by AI for rapid municipal routing.</p>
                                     
                                     <form onSubmit={requestOTP} className="space-y-5">
                                         <div>
                                             <div className="relative group">
                                                 <span className="absolute left-4 top-4 text-slate-400 font-medium">+91</span>
-                                                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-12 pr-4 py-4 bg-slate-800/50 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium text-white placeholder-slate-500" placeholder="Enter mobile number" required />
+                                                <input 
+                                                    type="tel" 
+                                                    inputMode="numeric"
+                                                    value={phone} 
+                                                    onChange={handlePhoneChange} 
+                                                    className={`w-full pl-12 pr-4 py-4 bg-slate-800/50 border ${phoneError ? 'border-red-500 focus:ring-red-500' : 'border-slate-700 focus:ring-blue-500'} rounded-2xl focus:ring-2 focus:border-transparent outline-none transition-all font-medium text-white placeholder-slate-500`} 
+                                                    placeholder="Enter 10-digit number" 
+                                                    required 
+                                                />
                                             </div>
+                                            {/* Dynamic Error Message */}
+                                            {phoneError && (
+                                                <div className="mt-2 text-red-400 text-sm font-medium flex items-center gap-1.5 animate-fade-in">
+                                                    <Icon name="alert-circle" size={16} />
+                                                    {phoneError}
+                                                </div>
+                                            )}
                                         </div>
                                         <button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold hover:shadow-lg hover:shadow-blue-500/25 transition-all flex justify-center items-center gap-2">
                                             Continue Securely <Icon name="arrow-right" size={20} />
@@ -197,14 +282,13 @@
                                 </div>
                             )}
 
-                            {/* --- OTP VIEW --- */}
                             {view === 'otp' && (
                                 <div className="flex-1 flex flex-col justify-center animate-slide-up pb-10">
                                     <button onClick={() => setView('login')} className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-8 border border-slate-700 hover:text-white transition-colors">
                                         <Icon name="chevron-left" size={20} />
                                     </button>
                                     <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Verify Number</h2>
-                                    <p className="text-slate-400 mb-10">We've sent a 4-digit security code to <span className="text-white font-medium">+91 {phone}</span></p>
+                                    <p className="text-slate-400 mb-10">We've sent a 4-digit code to <span className="text-white font-medium">+91 {phone}</span></p>
                                     
                                     <form onSubmit={verifyOTP} className="space-y-8">
                                         <div className="flex gap-4 justify-between">
@@ -215,7 +299,7 @@
                                                     type="text" 
                                                     inputMode="numeric"
                                                     maxLength="1" 
-                                                    className="w-16 h-16 text-center text-2xl font-bold bg-slate-800/50 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white placeholder-slate-600 shadow-inner" 
+                                                    className="w-16 h-16 text-center text-2xl font-bold bg-slate-800/50 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white shadow-inner" 
                                                     required 
                                                     onChange={(e) => {
                                                         const val = e.target.value;
@@ -237,24 +321,18 @@
                                 </div>
                             )}
 
-                            {/* --- DASHBOARD VIEW --- */}
                             {view === 'dashboard' && (
-                                <div className="space-y-6 animate-fade-in">
-                                    {/* View Toggle */}
-                                    <div className="flex bg-slate-800/80 p-1.5 rounded-xl border border-slate-700">
+                                <div className="space-y-6 animate-fade-in flex-1 flex flex-col">
+                                    <div className="flex bg-slate-800/80 p-1.5 rounded-xl border border-slate-700 shrink-0">
                                         <button onClick={() => setViewMode('list')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'list' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400'}`}>Active Reports</button>
                                         <button onClick={() => setViewMode('map')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'map' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400'}`}>Live Map</button>
                                     </div>
 
                                     {viewMode === 'map' ? (
-                                        <div className="w-full h-96 bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden relative flex items-center justify-center">
-                                            {/* Simulated Map Background */}
-                                            <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-500 animate-bounce">
-                                                <Icon name="map-pin" size={48} className="drop-shadow-lg" />
-                                            </div>
-                                            <div className="absolute bottom-6 glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-white shadow-xl flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span> Radar Active
+                                        <div className="flex-1 w-full min-h-[400px] bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden relative shadow-inner">
+                                            <div ref={mapRef} className="absolute inset-0 z-0"></div>
+                                            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 glass-panel px-5 py-2.5 rounded-full text-sm font-medium text-white shadow-xl flex items-center gap-2 z-10 pointer-events-none">
+                                                <span className="w-2 h-2 rounded-full bg-blue-400 pulse-dot"></span> GPS Tracking Active
                                             </div>
                                         </div>
                                     ) : (
@@ -286,7 +364,6 @@
                                 </div>
                             )}
 
-                            {/* --- REPORT ISSUE VIEW --- */}
                             {view === 'report' && (
                                 <div className="space-y-6 animate-slide-up">
                                     <div className="flex items-center justify-between">
@@ -305,18 +382,14 @@
                                                 ref={fileInputRef} 
                                                 className="hidden" 
                                                 onChange={(e) => {
-                                                    if(e.target.files && e.target.files.length > 0) {
-                                                        simulateAIAnalysis();
-                                                    }
+                                                    if(e.target.files && e.target.files.length > 0) simulateAIAnalysis();
                                                 }}
                                             />
                                             
                                             <div 
                                                 className={`glass-panel border-2 border-dashed rounded-3xl p-8 text-center transition-all ${isAnalyzing ? 'border-blue-500 bg-blue-900/20' : 'border-slate-600 hover:border-slate-400 hover:bg-slate-800/50 cursor-pointer'}`} 
                                                 onClick={() => {
-                                                    if (!isAnalyzing && fileInputRef.current) {
-                                                        fileInputRef.current.click();
-                                                    }
+                                                    if (!isAnalyzing && fileInputRef.current) fileInputRef.current.click();
                                                 }}
                                             >
                                                 {isAnalyzing ? (
@@ -375,7 +448,6 @@
                             )}
                         </main>
 
-                        {/* Floating Action Button for Dashboard */}
                         {view === 'dashboard' && (
                             <div className="absolute bottom-8 left-0 right-0 px-6 z-20 flex justify-end">
                                 <button onClick={() => setView('report')} className="bg-gradient-to-tr from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white w-16 h-16 rounded-full shadow-lg shadow-blue-500/40 flex items-center justify-center transform hover:scale-105 transition-all border border-blue-400/30">
