@@ -1,376 +1,276 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akash V | CSE-AIML Engineer & Full-Stack Developer</title>
-    
+    <title>CivicSync | AI-Powered Urban Maintenance</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    animation: {
-                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
-                        'blob': 'blob 7s infinite',
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        fadeInUp: {
-                            '0%': { opacity: 0, transform: 'translateY(30px)' },
-                            '100%': { opacity: 1, transform: 'translateY(0)' },
-                        },
-                        blob: {
-                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap');
-        
-        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; overflow-x: hidden; }
-        .cyber-gradient { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
-        .tech-tag { font-family: 'Fira Code', monospace; font-size: 0.75rem; }
-        
-        * { transition: background-color 0.3s ease, border-color 0.3s ease; }
-        .delay-100 { animation-delay: 100ms; }
-        .delay-200 { animation-delay: 200ms; }
-        .delay-300 { animation-delay: 300ms; }
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
-
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        html:not(.dark) .glass-panel {
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .pulse-dot { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .loader { border-top-color: #3b82f6; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-[#020617] dark:text-slate-100 transition-colors duration-500 relative">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
 
-        // --- Custom Hook: Typing Effect ---
-        const useTypingEffect = (words, typingSpeed = 100, deletingSpeed = 50, pauseTime = 2000) => {
-            const [text, setText] = useState('');
-            const [wordIndex, setWordIndex] = useState(0);
-            const [isDeleting, setIsDeleting] = useState(false);
-
-            useEffect(() => {
-                const currentWord = words[wordIndex];
-                let timeout;
-
-                if (isDeleting) {
-                    timeout = setTimeout(() => {
-                        setText(currentWord.substring(0, text.length - 1));
-                        if (text.length === 0) {
-                            setIsDeleting(false);
-                            setWordIndex((prev) => (prev + 1) % words.length);
-                        }
-                    }, deletingSpeed);
-                } else {
-                    timeout = setTimeout(() => {
-                        setText(currentWord.substring(0, text.length + 1));
-                        if (text.length === currentWord.length) {
-                            setTimeout(() => setIsDeleting(true), pauseTime);
-                        }
-                    }, typingSpeed);
-                }
-                return () => clearTimeout(timeout);
-            }, [text, isDeleting, wordIndex, words]);
-
-            return text;
-        };
-
-        // --- Adaptive Galaxy Canvas Component ---
-        const Starfield = ({ isDark }) => {
-            const canvasRef = useRef(null);
-
-            useEffect(() => {
-                const canvas = canvasRef.current;
-                const ctx = canvas.getContext('2d');
-                let animationFrameId;
-                let stars = [];
-
-                const init = () => {
-                    canvas.width = window.innerWidth;
-                    canvas.height = window.innerHeight;
-                    stars = [];
-                    const numStars = window.innerWidth < 768 ? 80 : 200; 
-                    
-                    for (let i = 0; i < numStars; i++) {
-                        stars.push({
-                            x: Math.random() * canvas.width,
-                            y: Math.random() * canvas.height,
-                            radius: Math.random() * 1.8,
-                            vx: (Math.random() - 0.5) * 0.3,
-                            vy: (Math.random() - 0.5) * 0.3,
-                            opacity: Math.random(),
-                            twinkleSpeed: (Math.random() * 0.02) + 0.005
-                        });
-                    }
-                };
-
-                const render = () => {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Determine particle color based on theme
-                    const rgb = isDark ? '255, 255, 255' : '59, 130, 246'; // White in dark, Cyber Blue in light
-                    
-                    stars.forEach(star => {
-                        star.opacity += star.twinkleSpeed;
-                        if (star.opacity > 1 || star.opacity < 0.1) {
-                            star.twinkleSpeed = -star.twinkleSpeed;
-                        }
-
-                        star.x += star.vx;
-                        star.y += star.vy;
-
-                        if (star.x < 0) star.x = canvas.width;
-                        if (star.x > canvas.width) star.x = 0;
-                        if (star.y < 0) star.y = canvas.height;
-                        if (star.y > canvas.height) star.y = 0;
-
-                        ctx.beginPath();
-                        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-                        
-                        // Lower opacity in light mode so it remains subtle
-                        const finalOpacity = isDark ? star.opacity : star.opacity * 0.4;
-                        ctx.fillStyle = `rgba(${rgb}, ${finalOpacity})`;
-                        ctx.fill();
-                    });
-
-                    animationFrameId = requestAnimationFrame(render);
-                };
-
-                init();
-                render();
-
-                const handleResize = () => init();
-                window.addEventListener('resize', handleResize);
-
-                return () => {
-                    cancelAnimationFrame(animationFrameId);
-                    window.removeEventListener('resize', handleResize);
-                };
-            }, [isDark]); // Re-run effect when theme changes to update colors immediately
-
-            return (
-                <canvas 
-                    ref={canvasRef} 
-                    className="fixed top-0 left-0 w-full h-full z-[-15] pointer-events-none transition-opacity duration-1000"
-                />
-            );
+        // Custom Icon Component using Lucide
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => { lucide.createIcons(); }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
         };
 
         const App = () => {
-            const [isDark, setIsDark] = useState(true);
-            const [scrollProgress, setScrollProgress] = useState(0);
-            const [formStatus, setFormStatus] = useState('idle');
+            // View States: 'login', 'otp', 'dashboard', 'report'
+            const [view, setView] = useState('login');
+            const [phone, setPhone] = useState('');
+            const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
+            const [isAnalyzing, setIsAnalyzing] = useState(false);
+            const [aiResult, setAiResult] = useState(null);
 
-            const titles = ["CSE-AIML Engineer", "Full-Stack Developer", "System Optimizer", "MERN Specialist"];
-            const typedText = useTypingEffect(titles);
+            // Mock Data
+            const [reports, setReports] = useState([
+                { id: 'SYNC-849', type: 'Severe Pothole', location: 'Kengeri Main Road', status: 'In Progress', severity: 'High', dept: 'Road Infra', time: '2 hrs ago' },
+                { id: 'SYNC-842', type: 'Streetlight Outage', location: 'Near Sapthagiri University', status: 'Resolved', severity: 'Low', dept: 'Electrical', time: '1 day ago' }
+            ]);
 
-            useEffect(() => {
-                if (isDark) document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
-                setTimeout(() => lucide.createIcons(), 50);
-            }, [isDark]);
-
-            useEffect(() => {
-                const handleScroll = () => {
-                    const totalScroll = document.documentElement.scrollTop;
-                    const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-                    const scroll = `${totalScroll / windowHeight}`;
-                    setScrollProgress(scroll);
-                }
-                window.addEventListener('scroll', handleScroll);
-                return () => window.removeEventListener('scroll', handleScroll);
-            }, []);
-
-            const handleFormSubmit = (e) => {
+            // Handlers
+            const requestOTP = (e) => {
                 e.preventDefault();
-                setFormStatus('submitting');
-                setTimeout(() => setFormStatus('success'), 1500);
+                if(phone.length >= 10) setView('otp');
+            };
+
+            const verifyOTP = (e) => {
+                e.preventDefault();
+                setView('dashboard');
+            };
+
+            const simulateAIAnalysis = () => {
+                setIsAnalyzing(true);
+                setAiResult(null);
+                
+                // Simulate network request to Gemini API
+                setTimeout(() => {
+                    setIsAnalyzing(false);
+                    setAiResult({
+                        type: 'Burst Water Pipe',
+                        confidence: '98.4%',
+                        severity: 'Critical',
+                        dept: 'BWSSB / Water Supply',
+                        action: 'Emergency Dispatch Required'
+                    });
+                }, 2500);
+            };
+
+            const submitReport = () => {
+                const newReport = {
+                    id: `SYNC-${Math.floor(Math.random() * 900) + 100}`,
+                    type: aiResult.type,
+                    location: 'Current GPS Location',
+                    status: 'Dispatched',
+                    severity: aiResult.severity,
+                    dept: aiResult.dept,
+                    time: 'Just now'
+                };
+                setReports([newReport, ...reports]);
+                setView('dashboard');
+                setAiResult(null);
             };
 
             return (
-                <div className="min-h-screen relative">
-                    {/* Top Scroll Progress Bar */}
-                    <div className="fixed top-0 left-0 h-1 bg-blue-600 z-[60] transition-all duration-150" style={{ width: `${scrollProgress * 100}%` }}></div>
-
-                    {/* Adaptive Galaxy Particles */}
-                    <Starfield isDark={isDark} />
-
-                    {/* Adaptive Nebula Background Blobs */}
-                    <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-20 pointer-events-none">
-                        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-300/40 dark:bg-blue-500/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl animate-blob"></div>
-                        <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-300/40 dark:bg-purple-500/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl animate-blob animation-delay-2000"></div>
-                        <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-sky-300/40 dark:bg-indigo-500/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl animate-blob animation-delay-4000"></div>
-                    </div>
-
-                    {/* Navbar */}
-                    <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center glass-panel border-b border-transparent">
-                        <div className="text-xl font-bold tracking-tighter text-blue-600 dark:text-blue-400">AKASH.V</div>
-                        <div className="flex items-center space-x-6">
-                            <div className="hidden md:flex space-x-8 text-sm font-semibold mr-4">
-                                <a href="#about" className="hover:text-blue-600 dark:hover:text-blue-400 transition">About</a>
-                                <a href="#projects" className="hover:text-blue-600 dark:hover:text-blue-400 transition">Work</a>
-                                <a href="#contact" className="hover:text-blue-600 dark:hover:text-blue-400 transition">Contact</a>
-                            </div>
-                            <button 
-                                onClick={() => setIsDark(!isDark)}
-                                className="p-2 rounded-full bg-white dark:bg-slate-800 text-slate-800 dark:text-yellow-400 hover:scale-110 transition-transform shadow-md dark:shadow-inner flex items-center justify-center border border-slate-200 dark:border-transparent"
-                                aria-label="Toggle Theme"
-                            >
-                                <i data-lucide={isDark ? "sun" : "moon"} className="w-5 h-5"></i>
-                            </button>
-                        </div>
-                    </nav>
-
-                    <main>
-                        {/* Hero Section */}
-                        <section id="about" className="pt-48 pb-32 px-6 max-w-5xl mx-auto flex flex-col items-center text-center opacity-0 animate-fade-in-up min-h-[85vh] justify-center relative z-10">
-                            <div className="inline-flex items-center px-4 py-1.5 mb-8 rounded-full bg-white/80 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 text-xs font-bold uppercase tracking-widest glass-panel shadow-sm dark:shadow-none">
-                                <span className="w-2 h-2 rounded-full bg-blue-500 mr-3 animate-pulse-slow shadow-[0_0_8px_rgba(59,130,246,0.8)]"></span>
-                                Available for Opportunities
-                            </div>
-                            <h1 className="text-6xl md:text-8xl font-extrabold mb-6 tracking-tighter text-slate-900 dark:text-white drop-shadow-sm">
-                                Akash V
-                            </h1>
-                            <h2 className="text-2xl md:text-4xl text-slate-600 dark:text-slate-400 mb-8 h-12">
-                                <span className="text-blue-600 dark:text-blue-400 font-semibold border-r-2 border-blue-500 pr-2 animate-pulse">{typedText}</span>
-                            </h2>
-                            <p className="text-slate-600 dark:text-slate-400 max-w-xl mb-12 leading-relaxed text-lg">
-                                Building scalable web solutions and intelligent systems. Currently pursuing a Bachelor of Engineering at Sapthagiri NPS University in Bengaluru.
-                            </p>
-                            <div className="flex flex-wrap justify-center gap-6">
-                                <a href="#projects" className="px-8 py-4 cyber-gradient text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-lg shadow-blue-500/25 hover:-translate-y-1">
-                                    Explore My Work
-                                </a>
-                                <a href="#contact" className="px-8 py-4 bg-white dark:bg-transparent text-slate-900 dark:text-white rounded-xl font-bold border-2 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm dark:shadow-none">
-                                    Get In Touch
-                                </a>
-                            </div>
-                        </section>
-
-                        {/* Projects Section */}
-                        <section id="projects" className="py-24 px-6 max-w-6xl mx-auto opacity-0 animate-fade-in-up delay-100 relative z-10">
-                            <h2 className="text-4xl font-extrabold mb-16 text-center text-slate-900 dark:text-white tracking-tight">Proof of Work</h2>
-                            <div className="grid md:grid-cols-3 gap-8">
-                                {[
-                                    { title: "Maintenance App", desc: "A full-stack application featuring phone-number-based OTP login and real-time database synchronization.", icon: "smartphone", tags: ["Node.js", "MongoDB", "React"] },
-                                    { title: "Psychic Shivaramji", desc: "A professional, fully deployed website delivered to meet specific client requirements.", icon: "globe", tags: ["Client Delivery", "Deployment"] },
-                                    { title: "Task Management", desc: "A collaborative tool designed for efficiency, structured workflow management, and team synchronization.", icon: "kanban", tags: ["MERN", "State Mgmt"] }
-                                ].map((project, i) => (
-                                    <div key={i} className="p-8 glass-panel rounded-3xl border border-white/40 dark:border-slate-800 hover:-translate-y-2 hover:border-blue-400/50 dark:hover:border-blue-500/50 transition-all duration-300 group flex flex-col">
-                                        <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm dark:shadow-none">
-                                            <i data-lucide={project.icon} className="text-blue-600 dark:text-blue-400 w-7 h-7"></i>
-                                        </div>
-                                        <h3 className="text-2xl font-bold mb-3 text-slate-900 dark:text-white">{project.title}</h3>
-                                        <p className="text-slate-600 dark:text-slate-400 text-sm mb-8 leading-relaxed flex-grow">
-                                            {project.desc}
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {project.tags.map(tag => (
-                                                <span key={tag} className="tech-tag px-3 py-1.5 bg-white/60 dark:bg-slate-900/80 rounded-lg text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-slate-700/50 shadow-sm dark:shadow-none">{tag}</span>
-                                            ))}
-                                        </div>
+                <div className="min-h-screen flex justify-center bg-slate-100">
+                    <div className="w-full max-w-md bg-slate-50 min-h-screen relative shadow-2xl overflow-hidden">
+                        
+                        {/* Header */}
+                        {view !== 'login' && view !== 'otp' && (
+                            <header className="bg-white px-5 py-4 flex justify-between items-center sticky top-0 z-10 border-b border-slate-200 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-blue-600 p-1.5 rounded-lg">
+                                        <Icon name="satellite" className="text-white" size={18} />
                                     </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        {/* Interactive Contact Section */}
-                        <section id="contact" className="py-24 px-6 border-t border-slate-200/50 dark:border-slate-800/50 opacity-0 animate-fade-in-up delay-200 relative z-10">
-                            <div className="max-w-4xl mx-auto glass-panel p-8 md:p-12 rounded-3xl border border-white/40 dark:border-slate-800">
-                                <div className="grid md:grid-cols-2 gap-12">
                                     <div>
-                                        <h2 className="text-4xl font-extrabold mb-6 text-slate-900 dark:text-white tracking-tight">Let's build something.</h2>
-                                        <p className="text-slate-600 dark:text-slate-400 mb-8 text-lg">
-                                            Based in Kengeri, Bengaluru. I'm currently open for local and remote opportunities, collaborations, and client projects.
-                                        </p>
-                                        <div className="space-y-4">
-                                            <div className="flex items-center text-slate-700 dark:text-slate-400">
-                                                <i data-lucide="map-pin" className="mr-4 text-blue-600 dark:text-blue-500"></i> Kengeri, Bengaluru, KA
-                                            </div>
-                                            <div className="flex items-center text-slate-700 dark:text-slate-400">
-                                                <i data-lucide="cpu" className="mr-4 text-blue-600 dark:text-blue-500"></i> Sapthagiri NPS / ROG Flow X16
-                                            </div>
-                                            <div className="flex items-center text-slate-700 dark:text-slate-400">
-                                                <i data-lucide="languages" className="mr-4 text-blue-600 dark:text-blue-500"></i> English, Kannada, Tamil
-                                            </div>
+                                        <h1 className="text-lg font-bold text-slate-900 leading-tight">CivicSync</h1>
+                                        <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold uppercase tracking-wider">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span> Live Sync Active
                                         </div>
-                                    </div>
-
-                                    <div>
-                                        {formStatus === 'success' ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-center p-6 animate-fade-in-up">
-                                                <div className="w-16 h-16 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mb-4 shadow-sm dark:shadow-none">
-                                                    <i data-lucide="check" className="text-green-600 dark:text-green-400 w-8 h-8"></i>
-                                                </div>
-                                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Message Sent!</h3>
-                                                <p className="text-slate-600 dark:text-slate-400">I'll get back to you within 24 hours.</p>
-                                                <button onClick={() => setFormStatus('idle')} className="mt-6 text-blue-600 dark:text-blue-500 font-semibold hover:underline">Send another</button>
-                                            </div>
-                                        ) : (
-                                            <form onSubmit={handleFormSubmit} className="space-y-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
-                                                    <input required type="text" className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-900 dark:text-white shadow-sm" placeholder="John Doe" />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
-                                                    <input required type="email" className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-900 dark:text-white shadow-sm" placeholder="john@example.com" />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Message</label>
-                                                    <textarea required rows="4" className="w-full px-4 py-3 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-slate-900 dark:text-white resize-none shadow-sm" placeholder="Tell me about your project..."></textarea>
-                                                </div>
-                                                <button type="submit" disabled={formStatus === 'submitting'} className="w-full py-4 cyber-gradient text-white font-bold rounded-xl hover:opacity-90 transition-opacity flex justify-center items-center shadow-lg shadow-blue-500/20">
-                                                    {formStatus === 'submitting' ? <i data-lucide="loader-2" className="animate-spin w-5 h-5"></i> : "Send Message"}
-                                                </button>
-                                            </form>
-                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        </section>
-                    </main>
+                                <button onClick={() => setView('login')} className="text-slate-400 hover:text-slate-600">
+                                    <Icon name="log-out" size={20} />
+                                </button>
+                            </header>
+                        )}
 
-                    {/* Footer Links */}
-                    <footer className="py-8 text-center text-slate-500 dark:text-slate-500 text-sm relative z-10">
-                        <div className="flex justify-center space-x-6 mb-4">
-                            <a href="#" className="hover:text-blue-600 dark:hover:text-blue-500 transition-colors"><i data-lucide="github"></i></a>
-                            <a href="#" className="hover:text-blue-600 dark:hover:text-blue-500 transition-colors"><i data-lucide="linkedin"></i></a>
-                            <a href="#" className="hover:text-blue-600 dark:hover:text-blue-500 transition-colors"><i data-lucide="twitter"></i></a>
-                        </div>
-                        <p>&copy; 2024 Akash V. All rights reserved.</p>
-                    </footer>
+                        <main className="p-5 pb-24">
+                            {/* --- LOGIN VIEW --- */}
+                            {view === 'login' && (
+                                <div className="mt-20 px-4">
+                                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-200">
+                                        <Icon name="leaf" className="text-white" size={32} />
+                                    </div>
+                                    <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Smart Civic<br/>Maintenance.</h2>
+                                    <p className="text-slate-500 mb-8 leading-relaxed">Report infrastructure issues instantly. Powered by Gemini AI for rapid routing.</p>
+                                    
+                                    <form onSubmit={requestOTP} className="space-y-4">
+                                        <div>
+                                            <label className="text-sm font-semibold text-slate-700 block mb-1">Phone Number</label>
+                                            <div className="relative">
+                                                <span className="absolute left-4 top-3.5 text-slate-400 font-medium">+91</span>
+                                                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all font-medium" placeholder="Enter mobile number" required />
+                                            </div>
+                                        </div>
+                                        <button className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-semibold hover:bg-slate-800 transition-colors flex justify-center items-center gap-2">
+                                            Send Secure OTP <Icon name="arrow-right" size={18} />
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* --- OTP VIEW --- */}
+                            {view === 'otp' && (
+                                <div className="mt-20 px-4">
+                                    <button onClick={() => setView('login')} className="text-slate-400 mb-6 flex items-center gap-1 hover:text-slate-900 transition-colors">
+                                        <Icon name="arrow-left" size={16} /> Back
+                                    </button>
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Verify Number</h2>
+                                    <p className="text-slate-500 mb-8 text-sm">We've sent a 4-digit code to +91 {phone}</p>
+                                    
+                                    <form onSubmit={verifyOTP} className="space-y-6">
+                                        <div className="flex gap-3 justify-between">
+                                            {[1,2,3,4].map(i => (
+                                                <input key={i} type="text" maxLength="1" className="w-14 h-14 text-center text-xl font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none" required />
+                                            ))}
+                                        </div>
+                                        <button className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">
+                                            Verify & Login
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* --- DASHBOARD VIEW --- */}
+                            {view === 'dashboard' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="flex bg-slate-200 p-1 rounded-lg">
+                                        <button onClick={() => setViewMode('list')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>List View</button>
+                                        <button onClick={() => setViewMode('map')} className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Live Map</button>
+                                    </div>
+
+                                    {viewMode === 'map' ? (
+                                        <div className="w-full h-96 bg-slate-200 rounded-2xl border-2 border-slate-300 overflow-hidden relative flex items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+                                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-600">
+                                                <Icon name="map-pin" size={40} className="drop-shadow-lg" />
+                                            </div>
+                                            <span className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-sm font-semibold text-slate-700 shadow-md absolute bottom-4">Map Integration Placeholder</span>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {reports.map(r => (
+                                                <div key={r.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <span className={`text-[11px] font-bold uppercase px-2.5 py-1 rounded-md tracking-wide ${r.severity === 'Critical' ? 'bg-red-100 text-red-700' : r.severity === 'High' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                            {r.severity}
+                                                        </span>
+                                                        <span className="text-slate-400 text-xs font-medium">{r.time}</span>
+                                                    </div>
+                                                    <h3 className="font-bold text-slate-900 text-lg">{r.type}</h3>
+                                                    <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-1 mb-4">
+                                                        <Icon name="map-pin" size={14} /> {r.location}
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`w-2 h-2 rounded-full ${r.status === 'Resolved' ? 'bg-emerald-500' : r.status === 'Dispatched' ? 'bg-blue-500' : 'bg-amber-500'}`}></span>
+                                                            <span className="text-sm font-semibold text-slate-700">{r.status}</span>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400 font-mono">{r.id}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* --- REPORT ISSUE VIEW --- */}
+                            {view === 'report' && (
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-xl font-bold text-slate-900">New Report</h2>
+                                        <button onClick={() => {setView('dashboard'); setAiResult(null);}} className="text-slate-400 hover:text-slate-700"><Icon name="x" size={24} /></button>
+                                    </div>
+
+                                    {!aiResult ? (
+                                        <div className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all ${isAnalyzing ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50 cursor-pointer'}`} onClick={!isAnalyzing ? simulateAIAnalysis : null}>
+                                            {isAnalyzing ? (
+                                                <div className="flex flex-col items-center py-6">
+                                                    <div className="w-12 h-12 border-4 loader rounded-full border-slate-200 mb-4"></div>
+                                                    <h3 className="font-bold text-blue-600 mb-1">Gemini AI is analyzing...</h3>
+                                                    <p className="text-xs text-blue-400">Extracting context from image and metadata</p>
+                                                </div>
+                                            ) : (
+                                                <div className="py-8">
+                                                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <Icon name="camera" className="text-slate-500" size={28} />
+                                                    </div>
+                                                    <h3 className="font-bold text-slate-700 mb-1">Upload Photo</h3>
+                                                    <p className="text-sm text-slate-500">Tap to capture the civic issue</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                            <div className="bg-slate-900 p-4 flex items-center gap-3 text-white">
+                                                <Icon name="sparkles" size={20} className="text-blue-400" />
+                                                <h3 className="font-semibold">AI Triage Complete</h3>
+                                            </div>
+                                            <div className="p-5 space-y-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Detected Issue</p>
+                                                        <p className="font-bold text-slate-900">{aiResult.type}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Severity</p>
+                                                        <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded">{aiResult.severity}</span>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <p className="text-xs text-slate-500 font-semibold uppercase mb-1">Routing Department</p>
+                                                        <p className="font-medium text-slate-700 flex items-center gap-2">
+                                                            <Icon name="truck" size={16} className="text-slate-400"/> {aiResult.dept}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button onClick={submitReport} className="w-full mt-4 bg-blue-600 text-white py-3 rounded-xl font-semibold shadow-md hover:bg-blue-700">
+                                                    Confirm & Dispatch
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </main>
+
+                        {/* Floating Action Button for Dashboard */}
+                        {view === 'dashboard' && (
+                            <div className="fixed bottom-6 left-0 right-0 max-w-md mx-auto px-5 z-20 flex justify-end">
+                                <button onClick={() => setView('report')} className="bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg shadow-blue-300 flex items-center justify-center transform hover:scale-105 transition-all">
+                                    <Icon name="plus" size={28} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         };
