@@ -23,7 +23,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         // Custom Icon Component using Lucide
         const Icon = ({ name, size = 24, className = "" }) => {
@@ -32,12 +32,13 @@
         };
 
         const App = () => {
-            // View States: 'login', 'otp', 'dashboard', 'report'
             const [view, setView] = useState('login');
             const [phone, setPhone] = useState('');
-            const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
+            const [viewMode, setViewMode] = useState('list');
             const [isAnalyzing, setIsAnalyzing] = useState(false);
             const [aiResult, setAiResult] = useState(null);
+            
+            const fileInputRef = useRef(null); // Reference for the hidden file input
 
             // Mock Data
             const [reports, setReports] = useState([
@@ -147,9 +148,36 @@
                                     <p className="text-slate-500 mb-8 text-sm">We've sent a 4-digit code to +91 {phone}</p>
                                     
                                     <form onSubmit={verifyOTP} className="space-y-6">
+                                        {/* OTP Input Group with Auto-advance */}
                                         <div className="flex gap-3 justify-between">
-                                            {[1,2,3,4].map(i => (
-                                                <input key={i} type="text" maxLength="1" className="w-14 h-14 text-center text-xl font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none" required />
+                                            {[0, 1, 2, 3].map(index => (
+                                                <input 
+                                                    key={index} 
+                                                    id={`otp-${index}`}
+                                                    type="text" 
+                                                    inputMode="numeric"
+                                                    maxLength="1" 
+                                                    className="w-14 h-14 text-center text-xl font-bold bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition-all" 
+                                                    required 
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        // Ensure only numbers are entered
+                                                        if (val && !/^[0-9]$/.test(val)) {
+                                                            e.target.value = '';
+                                                            return;
+                                                        }
+                                                        // Auto-advance to next input
+                                                        if (val && index < 3) {
+                                                            document.getElementById(`otp-${index + 1}`).focus();
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        // Move back on backspace if current field is empty
+                                                        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                                                            document.getElementById(`otp-${index - 1}`).focus();
+                                                        }
+                                                    }}
+                                                />
                                             ))}
                                         </div>
                                         <button className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">
@@ -212,25 +240,49 @@
                                     </div>
 
                                     {!aiResult ? (
-                                        <div className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all ${isAnalyzing ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50 cursor-pointer'}`} onClick={!isAnalyzing ? simulateAIAnalysis : null}>
-                                            {isAnalyzing ? (
-                                                <div className="flex flex-col items-center py-6">
-                                                    <div className="w-12 h-12 border-4 loader rounded-full border-slate-200 mb-4"></div>
-                                                    <h3 className="font-bold text-blue-600 mb-1">Gemini AI is analyzing...</h3>
-                                                    <p className="text-xs text-blue-400">Extracting context from image and metadata</p>
-                                                </div>
-                                            ) : (
-                                                <div className="py-8">
-                                                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                        <Icon name="camera" className="text-slate-500" size={28} />
+                                        <div>
+                                            {/* Hidden file input that gets triggered by clicking the box below */}
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                capture="environment"
+                                                ref={fileInputRef} 
+                                                className="hidden" 
+                                                onChange={(e) => {
+                                                    // Trigger analysis only if a file was actually selected
+                                                    if(e.target.files && e.target.files.length > 0) {
+                                                        simulateAIAnalysis();
+                                                    }
+                                                }}
+                                            />
+                                            
+                                            <div 
+                                                className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all ${isAnalyzing ? 'border-blue-400 bg-blue-50' : 'border-slate-300 bg-white hover:bg-slate-50 cursor-pointer'}`} 
+                                                onClick={() => {
+                                                    if (!isAnalyzing && fileInputRef.current) {
+                                                        fileInputRef.current.click();
+                                                    }
+                                                }}
+                                            >
+                                                {isAnalyzing ? (
+                                                    <div className="flex flex-col items-center py-6">
+                                                        <div className="w-12 h-12 border-4 loader rounded-full border-slate-200 mb-4"></div>
+                                                        <h3 className="font-bold text-blue-600 mb-1">Gemini AI is analyzing...</h3>
+                                                        <p className="text-xs text-blue-400">Extracting context from image and metadata</p>
                                                     </div>
-                                                    <h3 className="font-bold text-slate-700 mb-1">Upload Photo</h3>
-                                                    <p className="text-sm text-slate-500">Tap to capture the civic issue</p>
-                                                </div>
-                                            )}
+                                                ) : (
+                                                    <div className="py-8">
+                                                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                            <Icon name="camera" className="text-slate-500" size={28} />
+                                                        </div>
+                                                        <h3 className="font-bold text-slate-700 mb-1">Upload Photo</h3>
+                                                        <p className="text-sm text-slate-500">Tap to capture the civic issue</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm animate-fade-in">
                                             <div className="bg-slate-900 p-4 flex items-center gap-3 text-white">
                                                 <Icon name="sparkles" size={20} className="text-blue-400" />
                                                 <h3 className="font-semibold">AI Triage Complete</h3>
